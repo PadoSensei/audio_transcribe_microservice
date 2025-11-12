@@ -1,0 +1,8 @@
+cat > railway.toml << 'EOF'
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python main.py"
+EOF
