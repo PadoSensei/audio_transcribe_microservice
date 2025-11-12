@@ -1,0 +1,12 @@
+# Python virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local environment variables
+# This is the most important line!
+.env
+
+test_file/
