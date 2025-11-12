@@ -11,10 +11,10 @@ from dotenv import load_dotenv
 # --- Configuration ---
 load_dotenv()
 SERVICE_API_KEY = os.getenv("SERVICE_API_KEY")
-N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL") # We need this to send the result back
+# N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL") # We need this to send the result back
 
-if not SERVICE_API_KEY or not N8N_WEBHOOK_URL:
-    print("FATAL ERROR: SERVICE_API_KEY or N8N_WEBHOOK_URL environment variable not set.")
+if not SERVICE_API_KEY:
+    print("FATAL ERROR: SERVICE_API_KEY environment variable not set.")
     sys.exit(1)
 
 # --- Global Model Loading ---
