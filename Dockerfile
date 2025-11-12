@@ -14,9 +14,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application
 COPY . .
 
-# Copy and make start script executable
-COPY start.sh .
-RUN chmod +x start.sh
-
-# Run the start script
-CMD ["./start.sh"]
+# Run Python directly - it will read PORT env var
+CMD ["python", "main.py"]

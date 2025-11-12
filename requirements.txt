@@ -1,7 +1,6 @@
-fastapi
-uvicorn[standard]
-python-multipart
-openai-whisper
-python-dotenv
-httpx
-ffmpeg
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+openai-whisper==20231117
+python-dotenv==1.0.0
+httpx==0.25.1

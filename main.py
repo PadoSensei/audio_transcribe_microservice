@@ -53,8 +53,9 @@ async def transcribe_audio(
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
-# Run with port from environment
+# THIS IS THE KEY ADDITION - Run server when executed directly
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    print(f"Starting server on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
