@@ -2,34 +2,34 @@ import os
 import whisper
 import uuid
 import httpx
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header, BackgroundTasks, Form
 from fastapi.responses import JSONResponse
 
-# --- Initialize FastAPI ---
 app = FastAPI()
 
-# --- Load Whisper Model ---
 print("Loading Whisper model...")
 model = whisper.load_model("base")
 print("Whisper model loaded successfully!")
 
-# --- Background Task Function ---
-def process_transcription(job_id: str, temp_filename: str, webhook_url: str = None):
-    """Process transcription in background and optionally send to webhook"""
-    print(f"[{job_id}] Starting transcription...")
+# Background task
+def process_transcription(job_id: str, temp_filename: str, chat_id: str, webhook_url: str):
+    """Process transcription and send to n8n webhook"""
+    print(f"[{job_id}] Starting transcription for chat {chat_id}...")
     try:
         result = model.transcribe(temp_filename, fp16=False)
         transcript = result["text"]
         print(f"[{job_id}] Transcription complete: {transcript[:50]}...")
         
-        # If webhook provided, send result back
-        if webhook_url:
-            payload = {"job_id": job_id, "transcript": transcript}
-            with httpx.Client(timeout=30.0) as client:
-                response = client.post(webhook_url, json=payload)
-                print(f"[{job_id}] Sent to webhook: {response.status_code}")
+        # Send to n8n webhook
+        payload = {
+            "job_id": job_id,
+            "chat_id": chat_id,
+            "transcript": transcript
+        }
         
-        return transcript
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(webhook_url, json=payload)
+            print(f"[{job_id}] Sent to webhook: {response.status_code}")
         
     except Exception as e:
         print(f"[{job_id}] Error: {e}")
@@ -37,7 +37,6 @@ def process_transcription(job_id: str, temp_filename: str, webhook_url: str = No
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
 
-# --- Endpoints ---
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "WhisperService is running"}
@@ -50,6 +49,8 @@ async def health():
 async def submit_job(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    chat_id: str = Form(...),  # NEW: Need chat_id from n8n
+    webhook_url: str = Form(...),  # NEW: Need webhook URL from n8n
     x_service_api_key: str = Header(None, alias="X-Service-API-Key")
 ):
     """Submit transcription job - returns immediately"""
@@ -64,43 +65,15 @@ async def submit_job(
         content = await file.read()
         f.write(content)
     
-    # Add to background tasks
-    background_tasks.add_task(process_transcription, job_id, temp_path)
+    # Add to background tasks with callback info
+    background_tasks.add_task(process_transcription, job_id, temp_path, chat_id, webhook_url)
     
-    print(f"[{job_id}] Job submitted, processing in background")
+    print(f"[{job_id}] Job submitted for chat {chat_id}")
     return JSONResponse(content={
         "status": "processing",
         "job_id": job_id,
         "message": "Transcription started"
     })
-
-@app.post("/transcribe_sync")
-async def transcribe_sync(
-    file: UploadFile = File(...),
-    x_service_api_key: str = Header(None, alias="X-Service-API-Key")
-):
-    """Synchronous transcription - for testing only"""
-    expected_key = os.getenv("SERVICE_API_KEY", "test-key")
-    if x_service_api_key != expected_key:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
-    
-    temp_path = f"/tmp/{file.filename}"
-    with open(temp_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
-    
-    try:
-        print(f"Transcribing {file.filename} synchronously...")
-        result = model.transcribe(temp_path, fp16=False)
-        transcript = result["text"]
-        
-        return JSONResponse(content={
-            "status": "success",
-            "transcript": transcript
-        })
-    finally:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
 
 if __name__ == "__main__":
     import uvicorn
