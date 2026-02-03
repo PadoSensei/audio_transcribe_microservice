@@ -75,6 +75,31 @@ async def submit_job(
         "message": "Transcription started"
     })
 
+# Add this to your FastAPI app in Python
+@app.post("/transcribe")
+async def transcribe(
+    file: UploadFile = File(...),
+    x_service_api_key: str = Header(None, alias="X-Service-API-Key")
+):
+    # Security check
+    expected_key = os.getenv("SERVICE_API_KEY", "test-key")
+    if x_service_api_key != expected_key:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+
+    # Save temp file
+    temp_path = f"/tmp/{uuid.uuid4()}_{file.filename}"
+    with open(temp_path, "wb") as f:
+        f.write(await file.read())
+
+    try:
+        # Run transcription immediately
+        # Use 'base' model as you have it loaded
+        result = model.transcribe(temp_path, fp16=False)
+        return {"transcript": result["text"]}
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
